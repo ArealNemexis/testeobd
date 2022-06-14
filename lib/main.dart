@@ -1,6 +1,7 @@
 // For performing some operations asynchronously
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 // For using PlatformException
 import 'package:flutter/services.dart';
@@ -145,6 +146,11 @@ class _BluetoothAppState extends State<BluetoothApp> {
     });
   }
 
+  var mensagem;
+  var fuel;
+  var rpm;
+  var speed;
+
   // Now, its time to build the UI
   @override
   Widget build(BuildContext context) {
@@ -200,7 +206,7 @@ class _BluetoothAppState extends State<BluetoothApp> {
                   children: <Widget>[
                     Expanded(
                       child: Text(
-                        'Enable Bluetooth',
+                        'Enable Bluetooth RPM ' + rpm.toString(),
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 16,
@@ -253,7 +259,7 @@ class _BluetoothAppState extends State<BluetoothApp> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
                             Text(
-                              'Device:',
+                              'Device: FUEL ' + fuel.toString(),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -267,7 +273,9 @@ class _BluetoothAppState extends State<BluetoothApp> {
                             RaisedButton(
                               onPressed: _isButtonUnavailable
                                   ? null
-                                  : _connected ? _disconnect : _connect,
+                                  : _connected
+                                      ? _disconnect
+                                      : _connect,
                               child:
                                   Text(_connected ? 'Disconnect' : 'Connect'),
                             ),
@@ -348,9 +356,33 @@ class _BluetoothAppState extends State<BluetoothApp> {
                         SizedBox(height: 15),
                         RaisedButton(
                           elevation: 2,
-                          child: Text("Bluetooth Settings"),
+                          child: Text(fuel != null ? 'fuel ' + fuel : 'fuel'),
                           onPressed: () {
-                            FlutterBluetoothSerial.instance.openSettings();
+                            // FlutterBluetoothSerial.instance.openSettings();
+                            // Uint8List teste =
+                            //     Uint8List.fromList(utf8.encode("01 0C" + "\r")); rpm
+                            Uint8List teste =
+                                Uint8List.fromList(utf8.encode("01 2F" + "\r"));
+                            print('enviando ' + teste.toString());
+
+                            // connection.output.add(teste);
+                            send(teste);
+                          },
+                        ),
+                        SizedBox(height: 15),
+                        RaisedButton(
+                          elevation: 2,
+                          child: Text(rpm != null ? 'rpm ' + rpm : 'rpm'),
+                          onPressed: () {
+                            // FlutterBluetoothSerial.instance.openSettings();
+                            // Uint8List teste =
+                            //     Uint8List.fromList(utf8.encode("01 0C" + "\r")); speed
+                            Uint8List teste =
+                                Uint8List.fromList(utf8.encode("01 0C" + "\r"));
+                            print('enviando ' + teste.toString());
+                            // connection.output.add(teste);
+
+                            send(teste);
                           },
                         ),
                       ],
@@ -383,6 +415,31 @@ class _BluetoothAppState extends State<BluetoothApp> {
     return items;
   }
 
+  Future send(Uint8List data) async {
+    connection.output.add(data);
+    await connection.output.allSent;
+  }
+
+  var converter = {
+    32: ' ',
+    48: '0',
+    49: '1',
+    50: '2',
+    51: '3',
+    52: '4',
+    53: '5',
+    54: '6',
+    55: '7',
+    56: '8',
+    57: '9',
+    65: 'A',
+    66: 'B',
+    67: 'C',
+    68: 'D',
+    69: 'E',
+    70: 'F'
+  };
+
   // Method to connect to bluetooth
   void _connect() async {
     setState(() {
@@ -399,8 +456,27 @@ class _BluetoothAppState extends State<BluetoothApp> {
           setState(() {
             _connected = true;
           });
+          // Uint8List teste = Uint8List.fromList(utf8.encode("01 0C"));
+          // print(teste);
+          // connection.output.add(teste);
 
-          connection.input.listen(null).onDone(() {
+          connection.input.listen((data) {
+            print(data);
+            setState(() {
+              //(buffer.get(2) * 256 + buffer.get(3)) / 4
+              // print('data recieved ' + data.toString());
+              // print((data[2] * 256 + data[3] / 4).toString());
+              // mensagem = (data[2] * 256 + data[3] / 4).toString();
+              print('data recieved ' + data.toString());
+              // print((data[2] * 100 / 255).toString());
+              rpm = (0.25 * (data[2] * 256 + data[3] / 4)).toString();
+              fuel = (data[2] * 100 / 255).toString();
+
+              print("fuel " + fuel);
+              print("rpm " + rpm);
+              mensagem = (data[2] * 100 / 255).toString();
+            });
+          }).onDone(() {
             if (isDisconnecting) {
               print('Disconnecting locally!');
             } else {
